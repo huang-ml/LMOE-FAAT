@@ -10,7 +10,7 @@ A lightweight implementation of Mixture of Experts (MoE) for language models usi
 - 💾 **Memory Efficient**: Multi-GPU support with balanced distribution
 - 🔧 **Easy Conversion**: Convert any Qwen model to MoE with simple commands
 
-You can find our checkpoint [here](https://huggingface.co/datasets/huyhoangvbck/LMoE-FAAT/tree/main)
+You can find our checkpoint [here](https://huggingface.co/datasets/huyhoangvbck/tree/main)
 
 ## Installation
 
@@ -30,7 +30,7 @@ uv pip install torch transformers datasets peft evaluate
 Convert a pretrained Qwen model to MoE architecture:
 
 ```bash
-python LMoE-FAAT/convert.py \
+python convert.py \
     --model_name Qwen/Qwen3-0.6B \
     --output_dir ./qwen3-0.6b-moe \
     --use_ffn_experts \
@@ -61,7 +61,7 @@ python LMoE-FAAT/convert.py \
 Train on multiple tasks (math, code, commonsense QA, medical):
 
 ```bash
-python LMoE-FAAT/train.py \
+python train.py \
     --model_path ./qwen3-0.6b-moe \
     --output_dir ./multitask-full \
     --num_samples 10000 \
@@ -171,7 +171,7 @@ The default training uses five diverse datasets:
 ```
 d:\LMOE-FAAT\
 ├── README.md                                    # This file
-├── LMoE-FAAT/
+├── 
 │   ├── modeling_qwen3_moe_final.py             # Main MoE implementation
 │   ├── configuration_qwen3.py                   # Model configuration
 │   ├── convert.py                               # Conversion script

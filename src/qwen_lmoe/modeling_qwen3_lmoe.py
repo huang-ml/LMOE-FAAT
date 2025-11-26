@@ -24,7 +24,7 @@ from transformers.processing_utils import Unpack
 from transformers.utils import TransformersKwargs, auto_docstring, can_return_tuple
 from transformers.utils.deprecation import deprecate_kwarg
 from transformers.utils.generic import OutputRecorder, check_model_inputs
-from configuration_qwen3 import Qwen3Config
+from .configuration_qwen3 import Qwen3Config
 
 @use_kernel_forward_from_hub("RMSNorm")
 class Qwen3RMSNorm(nn.Module):
