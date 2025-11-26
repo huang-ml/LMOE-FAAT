@@ -1,7 +1,7 @@
 import argparse
 import torch
 from transformers import AutoTokenizer
-from modeling_qwen3_moe_lmoe import Qwen3MoeForCausalLMLoad
+from qwen_lmoe.modeling_qwen3_lmoe import Qwen3MoeForCausalLMLoad
 
 
 def main():

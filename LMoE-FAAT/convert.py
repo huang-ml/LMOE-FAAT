@@ -1,6 +1,6 @@
 import argparse
 from transformers import AutoTokenizer
-from modeling_qwen3_moe_lmoe import Qwen3MoeForCausalLMConvert, save_moe_model
+from qwen_lmoe.modeling_qwen3_lmoe import Qwen3MoeForCausalLMConvert, save_moe_model
 
 
 def main():
