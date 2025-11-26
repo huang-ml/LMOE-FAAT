@@ -19,10 +19,21 @@
 # limitations under the License.
 """LLaMA model configuration"""
 
-from typing import Optional
+from typing import Optional, Any
 
-from ...configuration_utils import PreTrainedConfig
-from ...modeling_rope_utils import RopeParameters, rope_config_validation, standardize_rope_params
+from transformers.configuration_utils import PretrainedConfig as PreTrainedConfig
+from transformers.modeling_rope_utils import rope_config_validation
+
+RopeParameters = dict
+
+def standardize_rope_params(config, rope_theta=10000.0):
+    if config.rope_parameters is None:
+        config.rope_parameters = {"rope_type": "default", "rope_theta": rope_theta}
+    elif isinstance(config.rope_parameters, dict):
+        if "rope_type" not in config.rope_parameters:
+            config.rope_parameters["rope_type"] = "default"
+        if "rope_theta" not in config.rope_parameters:
+            config.rope_parameters["rope_theta"] = rope_theta
 
 
 class LlamaConfig(PreTrainedConfig):
@@ -174,10 +185,13 @@ class LlamaConfig(PreTrainedConfig):
         # Try to set `rope_scaling` if available, otherwise use `rope_parameters`
         rope_scaling = kwargs.pop("rope_scaling", None)
         self.rope_parameters = rope_scaling or rope_parameters
+        self.rope_scaling = self.rope_parameters
 
         # Validate the correctness of rotary position embeddings parameters
         rope_theta = kwargs.get("rope_theta", 10000.0)
         standardize_rope_params(self, rope_theta=rope_theta)
+        # Ensure rope_scaling is updated after standardization
+        self.rope_scaling = self.rope_parameters
         rope_config_validation(self)
 
         super().__init__(

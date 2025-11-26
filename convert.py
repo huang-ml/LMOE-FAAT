@@ -1,7 +1,7 @@
 import argparse
 from transformers import AutoTokenizer
+from src.llama_lmoe.modeling_llama_lmoe import LlamaMoeForCausalLMConvert, save_moe_model as save_llama_moe_model
 from src.qwen_lmoe.modeling_qwen3_lmoe import Qwen3MoeForCausalLMConvert, save_moe_model
-
 
 def main():
     parser = argparse.ArgumentParser(description="Convert a base Qwen model to MoE")
