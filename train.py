@@ -2,7 +2,7 @@ import argparse
 import torch
 from transformers import AutoTokenizer, Trainer, TrainingArguments, DataCollatorForLanguageModeling
 from datasets import load_dataset, concatenate_datasets, Dataset
-from qwen_lmoe.modeling_qwen3_lmoe import Qwen3MoeForCausalLMLoad
+from src.qwen_lmoe.modeling_qwen3_lmoe import Qwen3MoeForCausalLMLoad
 
 
 class MoETrainer(Trainer):
