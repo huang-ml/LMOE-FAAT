@@ -72,6 +72,17 @@ python train.py \
     --max_length 1024 \
     --device_map auto
 ```
+### 3. Inference the MoE model
+
+```bash
+python inference.py \
+    --model_path ./qwen3-0.6b-moe \
+    --prompt "What is machine learning?" \
+    --max_length 512 \
+    --temperature 0.7 \
+    --top_p 0.9 \
+    --device_map auto
+```
 
 **Parameters:**
 - `--model_path`: Path to the converted MoE model
