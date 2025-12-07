@@ -1,8 +1,56 @@
 import argparse
+import json
+import os
+
 import torch
 from transformers import AutoTokenizer, Trainer, TrainingArguments, DataCollatorForLanguageModeling
 from datasets import load_dataset, concatenate_datasets, Dataset
+
+from src.llama_lmoe.modeling_llama_lmoe import LlamaMoeForCausalLMLoad
 from src.qwen_lmoe.modeling_qwen3_lmoe import Qwen3MoeForCausalLMLoad
+
+
+def _detect_model_type(model_path: str) -> str:
+    """Infer model type from config or conversion_config; default to qwen when unsure."""
+    # Prefer the recorded base model name if available
+    conv_cfg_path = os.path.join(model_path, "conversion_config.json")
+    if os.path.exists(conv_cfg_path):
+        try:
+            with open(conv_cfg_path, "r") as f:
+                conv_cfg = json.load(f)
+            base_name = conv_cfg.get("base_model_name", "").lower()
+            if "llama" in base_name:
+                return "llama"
+            if "qwen" in base_name:
+                return "qwen"
+        except (OSError, json.JSONDecodeError):
+            pass
+
+    # Fallback to Hugging Face config
+    config_path = os.path.join(model_path, "config.json")
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                config = json.load(f)
+            model_type = config.get("model_type") or ""
+            arch = "".join(config.get("architectures", []))
+            probe = f"{model_type} {arch}".lower()
+            if "llama" in probe:
+                return "llama"
+            if "qwen" in probe:
+                return "qwen"
+        except (OSError, json.JSONDecodeError):
+            pass
+    return "qwen"
+
+
+def _load_tokenizer(model_path: str):
+    """Load tokenizer while fixing known regex issue when supported."""
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(model_path, fix_mistral_regex=True)
+    except TypeError:
+        tokenizer = AutoTokenizer.from_pretrained(model_path)
+    return tokenizer
 
 
 class MoETrainer(Trainer):
@@ -92,24 +140,34 @@ def load_and_prepare_datasets(num_samples=10000):
 
 
 def tokenize_dataset(dataset, tokenizer, max_length=1024):
-    """Tokenize dataset with chat template"""
+    """Tokenize dataset with chat template; tolerate tokenizer-specific kwargs."""
+
     def format_chat_template(example):
         messages = [
             {"role": "user", "content": example["query"]},
             {"role": "assistant", "content": example["response"]},
         ]
-        tokenized_chat = tokenizer.apply_chat_template(
-            messages,
-            tokenize=True,
-            enable_thinking=False,
-            add_generation_prompt=False,
-            return_tensors="pt",
-            padding="max_length",
-            max_length=max_length,
-            truncation=True,
-        )
+
+        template_kwargs = {
+            "conversation": messages,
+            "tokenize": True,
+            "add_generation_prompt": False,
+            "return_tensors": "pt",
+            "padding": "max_length",
+            "max_length": max_length,
+            "truncation": True,
+        }
+
+        try:
+            tokenized_chat = tokenizer.apply_chat_template(**template_kwargs, enable_thinking=False)
+        except TypeError:
+            # Some tokenizers expect `messages` instead of `conversation`, and may not support enable_thinking.
+            alt_kwargs = template_kwargs.copy()
+            alt_kwargs["messages"] = alt_kwargs.pop("conversation")
+            tokenized_chat = tokenizer.apply_chat_template(**alt_kwargs)
+
         return {"input_ids": tokenized_chat.squeeze()}
-    
+
     return dataset.map(format_chat_template)
 
 
@@ -135,13 +193,28 @@ def main():
     parser.add_argument("--num_epochs", type=int, default=6, help="Number of training epochs")
     parser.add_argument("--max_length", type=int, default=1024, help="Maximum sequence length")
     parser.add_argument("--device_map", type=str, default="auto", help="Device map for model loading")
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        default="auto",
+        choices=["auto", "qwen", "llama"],
+        help="Model family: qwen or llama; auto tries to infer from config",
+    )
     
     args = parser.parse_args()
     
     print("Loading tokenizer and model...")
     # Infer base model from the MoE model path
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
-    model = Qwen3MoeForCausalLMLoad(args.model_path, device_map=args.device_map)
+    model_type = _detect_model_type(args.model_path) if args.model_type == "auto" else args.model_type
+    tokenizer = _load_tokenizer(args.model_path)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    if model_type == "llama":
+        model = LlamaMoeForCausalLMLoad(args.model_path, device_map=args.device_map)
+    else:
+        model = Qwen3MoeForCausalLMLoad(args.model_path, device_map=args.device_map)
+
     model = model.to(torch.bfloat16)
     
     # Set up tokenizer
